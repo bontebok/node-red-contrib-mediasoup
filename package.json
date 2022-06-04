@@ -1,0 +1,24 @@
+{
+  "name": "node-red-contrib-mediasoup",
+  "version": "0.0.1",
+  "description": "",
+  "main": "mediasoup.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mediasoup",
+    "node-red",
+    "node"
+  ],
+  "author": "Bontebok",
+  "license": "MIT",
+  "node-red": {
+    "nodes": {
+      "mediasoup": "mediasoup.js"
+    }
+  },
+  "dependencies": {
+    "mediasoup": "^3.9.10"
+  }
+}

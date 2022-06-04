@@ -1,0 +1,273 @@
+
+<!-- mediasoup Worker node -->
+<script type="text/javascript">
+    RED.nodes.registerType('mediasoup-worker', {
+      category: "mediasoup",
+      color: "#1b9fc9",
+      paletteLabel: "worker",
+      defaults: {
+        name: { value: "" },
+        rtcMinPort: { value: 10000, required: true, validate:RED.validators.number() },
+        rtcMaxPort: { value: 20000, required: true, validate:RED.validators.number() },
+        logLevel: { value: "error" }
+      },
+      inputs: 1,
+      outputs: 1,
+      icon: "bridge.png",
+      label: function () {
+          return this.name || "worker";
+      }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="mediasoup-worker">
+  <div class="form-row">
+    <label for="node-input-name">Name</label>
+    <input type="text" id="node-input-name">
+  </div>
+  <div class="form-row">
+    <label for="node-input-rtcMinPort">Minimum RTC port</label>
+    <input type="text" id="node-input-rtcMinPort" placeholder="10000">
+  </div>
+  <div class="form-row">
+    <label for="node-input-rtcMaxPort">Maximum RTC port</label>
+    <input type="text" id="node-input-rtcMaxPort" placeholder="20000">
+  </div>
+  <div class="form-row">
+    <label for="node-input-logLevel">Logging level</label>
+    <select id="node-input-logLevel" placeholder="error">
+      <option value="debug">debug</option>
+      <option value="warn">warn</option>
+      <option value="error">error</option>
+      <option value="none">none</option>
+    </select>
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="mediasoup-worker">
+    <p>A node to create Mediasoup Workers</p>
+
+</script>
+
+<!-- mediasoup Router node -->
+<script type="text/javascript">
+    RED.nodes.registerType('mediasoup-router', {
+        category: "mediasoup",
+        color: "#1b9fc9",
+        paletteLabel: "router",
+        defaults: {
+            name: { value: "" }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "router";
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="mediasoup-router">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="mediasoup-router">
+    <p>A node to create Mediasoup Routers</p>
+</script>
+
+<!-- mediasoup Capabilities node -->
+<script type="text/javascript">
+    RED.nodes.registerType('mediasoup-capabilities', {
+        category: "mediasoup",
+        color: "#1b9fc9",
+        paletteLabel: "capabilities",
+        defaults: {
+            name: { value: "" },
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "capabilities";
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="mediasoup-capabilities">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="mediasoup-capabilities">
+    <p>A node to get a Router's RTP Capabilities</p>
+</script>
+
+
+<script type="text/javascript">
+    RED.nodes.registerType('mediasoup-transport', {
+        category: "mediasoup",
+        color: "#1b9fc9",
+        paletteLabel: "transport",
+        defaults: {
+            name: { value: "" },
+            listenIps: { value: [
+              { ip: "0.0.0.0", announcedIp: "127.0.0.1" },
+              { ip: "::", announcedIp: "::1" }
+              ]}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "transport";
+        },
+        oneditprepare: function () {
+            var node = this;
+            $("#node-input-listenIps-container").css('min-height', '250px').css('min-width', '450px').editableList({
+                sortable: true,
+                removable: true,
+                addItem: function (container, i, opt) {
+                    if (!opt.hasOwnProperty('r')) {
+                        opt.r = { ip: "", announcedIp: "" };
+                    }
+                    var row = $('<div/>').appendTo(container);
+                    var label = $('<label/>', { for: "node-input-listenIps-value-" + i, style: "margin-left: 3px;" }).text("IP " + i).appendTo(row);
+                    var valueField = $('<input/>', { class: "node-input-listenIps-value", type: "text", style: "margin-left: 5px;" }).appendTo(row);
+                    var label2 = $('<label/>', { for: "node-input-listenIps-announcedIp-value-" + i, style: "margin-left: 3px;" }).text("Announced Ip ").appendTo(row);
+                    var valueField2 = $('<input/>', { class: "node-input-listenIps-announcedIp-value", type: "text", style: "margin-left: 5px;" }).appendTo(row);
+                    valueField.val(opt.r.ip);
+                    valueField2.val(opt.r.announcedIp);
+                }
+            });
+            for (var i = 0; i < this.listenIps.length; i++) {
+                var ip = this.listenIps[i];
+                $("#node-input-listenIps-container").editableList('addItem', { r: ip, i: i });
+            }
+        },
+        oneditsave: function () {
+            var listenIps = $("#node-input-listenIps-container").editableList('items');
+            var node = this;
+            node.listenIps = [];
+            listenIps.each(function (i) {
+                var ruleData = $(this).data('data');
+                var ip = $(this);
+                var r = {};
+                r.ip = ip.find(".node-input-listenIps-value").val();
+                r.announcedIp = ip.find(".node-input-listenIps-announcedIp-value").val();
+                node.listenIps.push(r);
+            });
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="mediasoup-transport">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row node-input-listenIps-container-row">
+      <label for="node-input-listenIps-container-row">Listen IPs</label>
+      <ol id="node-input-listenIps-container"></ol>
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="mediasoup-transport">
+    <p>A node to get a Web Rtc Transport from a Router</p>
+
+</script>
+
+
+<script type="text/javascript">
+    RED.nodes.registerType('mediasoup-connect', {
+        category: "mediasoup",
+        color: "#1b9fc9",
+        paletteLabel: "connect",
+        defaults: {
+            name: { value: "" }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "connect";
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="mediasoup-connect">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="mediasoup-connect">
+    <p>A node to get a Web Rtc Transport from a Router</p>
+
+</script>
+
+
+<script type="text/javascript">
+    RED.nodes.registerType('mediasoup-produce', {
+        category: "mediasoup",
+        color: "#1b9fc9",
+        paletteLabel: "produce",
+        defaults: {
+            name: { value: "" }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "produce";
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="mediasoup-produce">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="mediasoup-produce">
+    <p>A node to get a Web Rtc Transport from a Router</p>
+
+</script>
+
+
+
+<script type="text/javascript">
+    RED.nodes.registerType('mediasoup-consume', {
+        category: "mediasoup",
+        color: "#1b9fc9",
+        paletteLabel: "consume",
+        defaults: {
+            name: { value: "" }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "consume";
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="mediasoup-consume">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="mediasoup-consume">
+    <p>A node to get a Web Rtc Transport from a Router</p>
+
+</script>
