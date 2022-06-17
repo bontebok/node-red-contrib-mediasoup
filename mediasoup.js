@@ -21,7 +21,7 @@ module.exports = function(RED) {
     enableUdp: true,
     enableTcp: true,
     preferUdp: true
-  }
+  };
 
   const createWorker = (node,rtcMinPort,rtcMaxPort,logLevel) => {
     const worker = mediasoup.createWorker({
@@ -54,9 +54,9 @@ module.exports = function(RED) {
         //console.log('transport closed');
       });
       return transport;
-    })
+    });
     return transport;
-  }
+  };
 
 
   class Router {
@@ -68,7 +68,7 @@ module.exports = function(RED) {
 
 const transportConnect = (transport,dtlsParameters) => {
   return transport.connect(dtlsParameters);
-}
+};
 
   class Worker {
     constructor(rtcMinPort,rtcMaxPort,logLevel) {
@@ -114,7 +114,7 @@ const transportConnect = (transport,dtlsParameters) => {
           workers[worker.pid] = worker;
           msg.worker = {
             id: worker.pid
-          }
+          };
           node.send(msg);
         });
       }
@@ -125,7 +125,7 @@ const transportConnect = (transport,dtlsParameters) => {
         workers[worker].close();
         delete workers[worker];
       }
-    })
+    });
   }
 
   function mediasoupRouter(n) {
@@ -154,7 +154,7 @@ const transportConnect = (transport,dtlsParameters) => {
             routers[router.id] = router;
             msg.router = {
               id: router.id
-            }
+            };
             node.send(msg);
           });
         }
@@ -182,11 +182,11 @@ const transportConnect = (transport,dtlsParameters) => {
         const router = routers[msg.router.id];
         msg.router.capabilities = {
           rtpCapabilities: router.rtpCapabilities
-        }
+        };
       } else {
         msg.capabilities = {
           rtpCapabilities: mediasoup.getSupportedRtpCapabilities()
-        }
+        };
       }
       node.send(msg);
     });
@@ -201,45 +201,54 @@ const transportConnect = (transport,dtlsParameters) => {
     this.listenIps = n.listenIps;
 
     node.on("input", function(msg) {
-      if('router' in msg && 'id' in msg.router && msg.router.id in routers) {
-        const router = routers[msg.router.id];
-        let transportType;
-        let transportOptions = defaultTransportOptions;
-        if('transportOptions' in msg) {
-          transportOptions = {
-            ...defaultTransportOptions,
-            ...msg.transportOptions
-          }
-          if(!('listenIps' in transportOptions))
-            transportOptions.listenIps = this.listenIps;
-        } else {
-          transportOptions.listenIps = this.listenIps;
-        }
-        if('transportType' in msg && msg.transportType == 'plain'){
-          transportType = 'plain';
-          transportOptions.listenIp = transportOptions.listenIps[0]; // Listen on the first IP address
-          delete transportOptions.listenIps;
-        }
-        transport = createTransport(router,transportOptions,transportType)
-        .then((transport) => {
-          transports[transport.id] = transport;
-          transports[transport.id].router = msg.router;
-          if('transportType' in msg && msg.transportType == 'plain'){
-            msg.transport = {
-              id: transport.id,
-              tuple: transport.tuple,
-              rtcpTuple: transport.rtcpTuple
-            }
-          } else  {
-            msg.transport = {
-              id: transport.id,
-              iceParameters: transport.iceParameters,
-              iceCandidates: transport.iceCandidates,
-              dtlsParameters: transport.dtlsParameters
-            }
-          }
+      if('transport' in msg && 'id' in msg.transport && msg.transport.id in transports) {
+        if('payload' in msg && msg.payload == 'close') {
+          // Close transport
+          transports[msg.transport.id].close();
+          delete transports[msg.transport.id];
           node.send(msg);
-        });
+        }
+      } else {
+        if('router' in msg && 'id' in msg.router && msg.router.id in routers) {
+          const router = routers[msg.router.id];
+          let transportType;
+          let transportOptions = defaultTransportOptions;
+          if('transportOptions' in msg) {
+            transportOptions = {
+              ...defaultTransportOptions,
+              ...msg.transportOptions
+            };
+            if(!('listenIps' in transportOptions))
+              transportOptions.listenIps = this.listenIps;
+          } else {
+            transportOptions.listenIps = this.listenIps;
+          }
+          if('transportType' in msg && msg.transportType == 'plain'){
+            transportType = 'plain';
+            transportOptions.listenIp = transportOptions.listenIps[0]; // Listen on the first IP address
+            delete transportOptions.listenIps;
+          }
+          transport = createTransport(router,transportOptions,transportType)
+          .then((transport) => {
+            transports[transport.id] = transport;
+            transports[transport.id].router = msg.router;
+            if('transportType' in msg && msg.transportType == 'plain'){
+              msg.transport = {
+                id: transport.id,
+                tuple: transport.tuple,
+                rtcpTuple: transport.rtcpTuple
+              };
+            } else  {
+              msg.transport = {
+                id: transport.id,
+                iceParameters: transport.iceParameters,
+                iceCandidates: transport.iceCandidates,
+                dtlsParameters: transport.dtlsParameters
+              };
+            }
+            node.send(msg);
+          });
+        }
       }
     });
   }
@@ -267,23 +276,32 @@ const transportConnect = (transport,dtlsParameters) => {
     this.name = n.name;
 
     node.on("input", function(msg) {
-      if('transport' in msg && 'id' in msg.transport && msg.transport.id in transports && 'producerOptions' in msg && 'kind' in msg.producerOptions && 'rtpParameters' in msg.producerOptions) {
-        const transport = transports[msg.transport.id];
-        node.log(JSON.stringify(msg.producerOptions));
-        transport.produce(msg.producerOptions)
-        .then((producer) => {
-          producers[producer.id] = producer;
-          producer.on('transportclose', () => {
-            producer.close();
-          })
-          msg.producer = {
-            id: producer.id
-          }
+      if('producer' in msg && 'id' in msg.producer && msg.producer.id in producers) {
+        if ('payload' in msg && msg.payload == "close") {
+          // Close transport
+          producers[msg.producer.id].close();
+          delete producers[msg.producer.id];
           node.send(msg);
-        })
-        .catch((err) => {
-          node.log(err);
-        })
+        }
+      } else {
+        if('transport' in msg && 'id' in msg.transport && msg.transport.id in transports && 'producerOptions' in msg && 'kind' in msg.producerOptions && 'rtpParameters' in msg.producerOptions) {
+          const transport = transports[msg.transport.id];
+          node.log(JSON.stringify(msg.producerOptions));
+          transport.produce(msg.producerOptions)
+          .then((producer) => {
+            producers[producer.id] = producer;
+            producer.on('transportclose', () => {
+              producer.close();
+            });
+            msg.producer = {
+              id: producer.id
+            };
+            node.send(msg);
+          })
+          .catch((err) => {
+            node.log(err);
+          });
+        }
       }
     });
   }
@@ -294,40 +312,50 @@ const transportConnect = (transport,dtlsParameters) => {
     this.name = n.name;
 
     node.on("input", function(msg) {
-      if('consumer' in msg && 'id' in msg.consumer && msg.consumer.id in consumers && 'paused' in msg) {
-        // Perhaps they want a state change?
-        const consumer = consumers[msg.consumer.id];
-        if(msg.paused)
-          consumer.pause();
-        else
-          consumer.resume();
+      if('consumer' in msg && 'id' in msg.consumer && msg.consumer.id in consumers) {
+        if ('paused' in msg) {
+          // Perhaps they want a state change?
+          const consumer = consumers[msg.consumer.id];
+          if(msg.paused)
+            consumer.pause();
+          else
+            consumer.resume();
           node.send(msg);
-      }
-      else if('producer' in msg && 'rtpCapabilities' in msg && 'transport' in msg && 'id' in msg.transport && msg.transport.id in transports) {
-        const transport = transports[msg.transport.id];
-        const router = routers[transport.router.id];
-        const consumeOptions = {
-          producerId: msg.producer.id,
-          rtpCapabilities: msg.rtpCapabilities
-        }
-        if(router.canConsume(consumeOptions)) {
-          if('paused' in msg) consumeOptions.paused = (msg.paused) ? true : false;
-          transport.consume(consumeOptions)
-          .then((consumer) => {
-            consumer.on('transportclose', () => {
-              //Send something??
-            })
-            consumer.on('producerclose', () => {
-              //Send something??
-            })
-            consumers[consumer.id] = consumer;
-            msg.consumer = {
-              id: consumer.id,
-              kind: consumer.kind,
-              rtpParameters: consumer.rtpParameters
-            }
+        } else {
+          if ('payload' in msg && msg.payload == "close") {
+            // Close consumer
+            consumers[msg.consumer.id].close();
+            delete consumers[msg.consumer.id];
             node.send(msg);
-          })
+          }
+        }
+      } else {
+        if('producer' in msg && 'rtpCapabilities' in msg && 'transport' in msg && 'id' in msg.transport && msg.transport.id in transports) {
+          const transport = transports[msg.transport.id];
+          const router = routers[transport.router.id];
+          const consumeOptions = {
+            producerId: msg.producer.id,
+            rtpCapabilities: msg.rtpCapabilities
+          };
+          if(router.canConsume(consumeOptions)) {
+            if('paused' in msg) consumeOptions.paused = (msg.paused) ? true : false;
+            transport.consume(consumeOptions)
+            .then((consumer) => {
+              consumer.on('transportclose', () => {
+                //Send something??
+              });
+              consumer.on('producerclose', () => {
+                //Send something??
+              });
+              consumers[consumer.id] = consumer;
+              msg.consumer = {
+                id: consumer.id,
+                kind: consumer.kind,
+                rtpParameters: consumer.rtpParameters
+              };
+              node.send(msg);
+            });
+          }
         }
       }
     });
