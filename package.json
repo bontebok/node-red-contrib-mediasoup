@@ -19,6 +19,6 @@
     }
   },
   "dependencies": {
-    "mediasoup": "3.9.17"
+    "mediasoup": "3.9.15"
   }
 }
